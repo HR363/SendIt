@@ -1,0 +1,116 @@
+// Prisma schema for SendIt backend (SQL Server compatible)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlserver"
+  url      = env("DATABASE_URL")
+}
+
+// Use string fields for enums (validate in app logic)
+// UserRole: 'USER', 'ADMIN', 'COURIER_AGENT'
+// ParcelStatus: 'PENDING', 'PICKED_UP', 'IN_TRANSIT', 'DELIVERED', 'CANCELLED'
+
+model User {
+  id         String   @id @default(uuid())
+  email      String   @unique
+  firstName  String
+  lastName   String
+  phone      String   @unique
+  password   String
+  role       String   // UserRole
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  deletedAt  DateTime?
+  // Relations
+  sentParcels      Parcel[]        @relation("SentParcels")
+  receivedParcels  Parcel[]        @relation("ReceivedParcels")
+  createdParcels   Parcel[]        @relation("CreatedParcels")
+  assignedParcels  Parcel[]        @relation("AssignedParcels")
+  reviews          Review[]
+  statusUpdates    ParcelStatusHistory[]
+}
+
+model ParcelCategory {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  minWeight   Decimal
+  maxWeight   Decimal
+  pricePerKg  Decimal
+  basePrice   Decimal
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+  // Relations
+  parcels     Parcel[]
+}
+
+model Parcel {
+  id                  String   @id @default(uuid())
+  trackingNumber      String   @unique
+  senderId            String
+  receiverId          String
+  categoryId          String
+  createdById         String
+  assignedCourierId   String?
+  senderName          String
+  senderPhone         String
+  senderEmail         String
+  receiverName        String
+  receiverPhone       String
+  receiverEmail       String
+  pickupLocation      String   // JSON as string
+  destinationLocation String   // JSON as string
+  weight              Decimal
+  description         String?
+  status              String   // ParcelStatus
+  estimatedDeliveryDate DateTime
+  actualDeliveryDate  DateTime?
+  price               Decimal
+  deliveryImage       String?
+  isActive            Boolean  @default(true)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  deletedAt           DateTime?
+  // Relations
+  sender              User     @relation("SentParcels", fields: [senderId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  receiver            User     @relation("ReceivedParcels", fields: [receiverId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  category            ParcelCategory @relation(fields: [categoryId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  createdBy           User     @relation("CreatedParcels", fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  assignedCourier     User?    @relation("AssignedParcels", fields: [assignedCourierId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  reviews             Review[]
+  statusHistory       ParcelStatusHistory[]
+}
+
+model Review {
+  id         String   @id @default(uuid())
+  userId     String
+  parcelId   String
+  rating     Int
+  comment    String?
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  deletedAt  DateTime?
+  // Relations
+  user       User     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  parcel     Parcel   @relation(fields: [parcelId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model ParcelStatusHistory {
+  id         String   @id @default(uuid())
+  parcelId   String
+  status     String   // ParcelStatus
+  location   String   // JSON as string
+  notes      String?
+  updatedById String
+  createdAt  DateTime @default(now())
+  // Relations
+  parcel     Parcel   @relation(fields: [parcelId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  updatedBy  User     @relation(fields: [updatedById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+} 
